@@ -152,13 +152,9 @@ app.get('/host/subject/:subjectId/visits', verifyToken, ensureRole('host'), asyn
 // Get all subjects and their links for student dashboard
 app.get('/student/dashboard', verifyToken, ensureRole('student'), async (req, res) => {
   try {
-    // CHANGED HERE: selecting subject_name AS "name"
-    const subjectsResult = await query(`
-      SELECT id, subject_name AS "name"
-      FROM subjects
-    `, []);
-    
+    const subjectsResult = await query('SELECT id, name FROM subjects', []);
     const subjects = subjectsResult.rows;
+
     for (let subject of subjects) {
       const linksResult = await query('SELECT id, title, url FROM links WHERE subject_id = $1', [subject.id]);
       subject.links = linksResult.rows;
@@ -184,6 +180,10 @@ app.get('/student/link/:linkId', verifyToken, ensureRole('student'), async (req,
   }
 });
 
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
