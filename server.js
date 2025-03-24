@@ -117,11 +117,11 @@ app.post('/host/subject/:subjectId/link', verifyToken, ensureRole('host'), async
 
   try {
     // Insert using your actual column names
-    await query('INSERT INTO links (subject_id, link_title, link_url) VALUES ($1, $2, $3)', [
-      subjectId,
-      title,
-      url
-    ]);
+    await query('INSERT INTO links (subject_id, title, url) VALUES ($1, $2, $3)', [
+  subjectId,
+  title,
+  url
+]);
     res.json({ success: true, message: 'Link added successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
