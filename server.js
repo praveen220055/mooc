@@ -126,16 +126,21 @@ app.post('/host/subject/:subjectId/link', verifyToken, ensureRole('host'), async
 });
 
 // View student visits for a subject's links
+// View student visits for a subject's links
 app.get('/host/subject/:subjectId/visits', verifyToken, ensureRole('host'), async (req, res) => {
   const { subjectId } = req.params;
   try {
+    // We assume your 'visits' table has columns: id, link_id, student_id, visited_at
+    // We'll alias visited_at AS "visit_time" so the frontend can still see it as 'visit_time'
     const result = await query(`
-      SELECT u.username AS "studentUsername", v.visit_time
+      SELECT
+        u.username AS "studentUsername",
+        v.visited_at AS "visit_time"
       FROM visits v
       JOIN links l ON v.link_id = l.id
       JOIN users u ON v.student_id = u.id
       WHERE l.subject_id = $1
-      ORDER BY v.visit_time DESC
+      ORDER BY v.visited_at DESC
     `, [subjectId]);
     res.json({ success: true, visits: result.rows });
   } catch (err) {
@@ -148,15 +153,16 @@ app.get('/host/subject/:subjectId/visits', verifyToken, ensureRole('host'), asyn
 // Get all subjects and their links for student dashboard
 app.get('/student/dashboard', verifyToken, ensureRole('student'), async (req, res) => {
   try {
-    // CHANGED HERE: selecting subject_name AS "name"
-    const subjectsResult = await query(`
-      SELECT id, subject_name AS "name"
-      FROM subjects
-    `, []);
-    
+    // We assume your 'subjects' table has columns: id, host_id, name
+    const subjectsResult = await query('SELECT id, name FROM subjects', []);
     const subjects = subjectsResult.rows;
+
     for (let subject of subjects) {
-      const linksResult = await query('SELECT id, title, url FROM links WHERE subject_id = $1', [subject.id]);
+      // We assume your 'links' table has columns: id, subject_id, title, url
+      const linksResult = await query(
+        'SELECT id, title, url FROM links WHERE subject_id = $1',
+        [subject.id]
+      );
       subject.links = linksResult.rows;
     }
     res.json({ success: true, subjects });
@@ -169,7 +175,13 @@ app.get('/student/dashboard', verifyToken, ensureRole('student'), async (req, re
 app.get('/student/link/:linkId', verifyToken, ensureRole('student'), async (req, res) => {
   const { linkId } = req.params;
   try {
-    await query('INSERT INTO visits (link_id, student_id) VALUES ($1, $2)', [linkId, req.user.id]);
+    // Insert a new visit with a timestamp
+    await query(
+      'INSERT INTO visits (link_id, student_id, visited_at) VALUES ($1, $2, NOW())',
+      [linkId, req.user.id]
+    );
+
+    // Fetch the link's URL to redirect the student
     const result = await query('SELECT url FROM links WHERE id = $1', [linkId]);
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Link not found.' });
