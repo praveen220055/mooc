@@ -12,17 +12,14 @@ const { verifyToken, ensureRole } = require('./authMiddleware');
 
 const app = express();
 
-// Update your pool configuration to use your Supabase connection string
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,  // Supabase connection string
+  connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false  // Required for many cloud DBs
+    rejectUnauthorized: false
   }
 });
 
 app.use(bodyParser.json());
-
-// Serve all files in the 'public' folder (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Helper function for database queries
@@ -79,14 +76,16 @@ app.post('/login', async (req, res) => {
 
 /* ========== HOST ROUTES ========== */
 
-// Get host dashboard data (subjects for dropdowns)
+// Get host dashboard data (used to populate dropdowns)
 app.get('/host/dashboard', verifyToken, ensureRole('host'), async (req, res) => {
   try {
-    // We assume your 'subjects' table has columns: id, host_id, name
-    const subjects = await query(
-      'SELECT id, name FROM subjects WHERE host_id = $1',
-      [req.user.id]
-    );
+    // CHANGED HERE: selecting subject_name AS "name"
+    const subjects = await query(`
+      SELECT id, subject_name AS "name"
+      FROM subjects
+      WHERE host_id = $1
+    `, [req.user.id]);
+    
     res.json({ success: true, subjects: subjects.rows });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -97,10 +96,12 @@ app.get('/host/dashboard', verifyToken, ensureRole('host'), async (req, res) => 
 app.post('/host/subject', verifyToken, ensureRole('host'), async (req, res) => {
   const { subjectName } = req.body;
   try {
-    await query(
-      'INSERT INTO subjects (host_id, name) VALUES ($1, $2)',
-      [req.user.id, subjectName]
-    );
+    // CHANGED HERE: inserting into subject_name
+    await query(`
+      INSERT INTO subjects (host_id, subject_name)
+      VALUES ($1, $2)
+    `, [req.user.id, subjectName]);
+
     res.json({ success: true, message: 'Subject added successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -110,14 +111,14 @@ app.post('/host/subject', verifyToken, ensureRole('host'), async (req, res) => {
 // Add a link to a subject
 app.post('/host/subject/:subjectId/link', verifyToken, ensureRole('host'), async (req, res) => {
   let { subjectId } = req.params;
-  subjectId = parseInt(subjectId, 10); // Convert subjectId to integer
+  subjectId = parseInt(subjectId, 10);
   const { title, url } = req.body;
   try {
-    // We assume your 'links' table has columns: id, subject_id, title, url
-    await query(
-      'INSERT INTO links (subject_id, title, url) VALUES ($1, $2, $3)',
-      [subjectId, title, url]
-    );
+    await query('INSERT INTO links (subject_id, title, url) VALUES ($1, $2, $3)', [
+  subjectId,
+  title,
+  url
+]);
     res.json({ success: true, message: 'Link added successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -128,17 +129,13 @@ app.post('/host/subject/:subjectId/link', verifyToken, ensureRole('host'), async
 app.get('/host/subject/:subjectId/visits', verifyToken, ensureRole('host'), async (req, res) => {
   const { subjectId } = req.params;
   try {
-    // We assume your 'visits' table has columns: id, link_id, student_id, visited_at
-    // We'll alias visited_at AS "visit_time" so the frontend can still see it as 'visit_time'
     const result = await query(`
-      SELECT
-        u.username AS "studentUsername",
-        v.visited_at AS "visit_time"
+      SELECT u.username AS "studentUsername", v.visit_time
       FROM visits v
       JOIN links l ON v.link_id = l.id
       JOIN users u ON v.student_id = u.id
       WHERE l.subject_id = $1
-      ORDER BY v.visited_at DESC
+      ORDER BY v.visit_time DESC
     `, [subjectId]);
     res.json({ success: true, visits: result.rows });
   } catch (err) {
@@ -151,16 +148,15 @@ app.get('/host/subject/:subjectId/visits', verifyToken, ensureRole('host'), asyn
 // Get all subjects and their links for student dashboard
 app.get('/student/dashboard', verifyToken, ensureRole('student'), async (req, res) => {
   try {
-    // We assume your 'subjects' table has columns: id, host_id, name
-    const subjectsResult = await query('SELECT id, name FROM subjects', []);
+    // CHANGED HERE: selecting subject_name AS "name"
+    const subjectsResult = await query(`
+      SELECT id, subject_name AS "name"
+      FROM subjects
+    `, []);
+    
     const subjects = subjectsResult.rows;
-
     for (let subject of subjects) {
-      // We assume your 'links' table has columns: id, subject_id, title, url
-      const linksResult = await query(
-        'SELECT id, title, url FROM links WHERE subject_id = $1',
-        [subject.id]
-      );
+      const linksResult = await query('SELECT id, title, url FROM links WHERE subject_id = $1', [subject.id]);
       subject.links = linksResult.rows;
     }
     res.json({ success: true, subjects });
@@ -173,13 +169,7 @@ app.get('/student/dashboard', verifyToken, ensureRole('student'), async (req, re
 app.get('/student/link/:linkId', verifyToken, ensureRole('student'), async (req, res) => {
   const { linkId } = req.params;
   try {
-    // Insert a new visit with a timestamp
-    await query(
-      'INSERT INTO visits (link_id, student_id, visited_at) VALUES ($1, $2, NOW())',
-      [linkId, req.user.id]
-    );
-
-    // Fetch the link's URL to redirect the student
+    await query('INSERT INTO visits (link_id, student_id) VALUES ($1, $2)', [linkId, req.user.id]);
     const result = await query('SELECT url FROM links WHERE id = $1', [linkId]);
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Link not found.' });
