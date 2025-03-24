@@ -112,14 +112,22 @@ app.post('/host/subject', verifyToken, ensureRole('host'), async (req, res) => {
 app.post('/host/subject/:subjectId/link', verifyToken, ensureRole('host'), async (req, res) => {
   let { subjectId } = req.params;
   subjectId = parseInt(subjectId, 10);
+  // Destructure request body
   const { title, url } = req.body;
+
   try {
-    await query('INSERT INTO links (subject_id, title, url) VALUES ($1, $2, $3)', [subjectId, title, url]);
+    // Insert using your actual column names
+    await query('INSERT INTO links (subject_id, link_title, link_url) VALUES ($1, $2, $3)', [
+      subjectId,
+      title,
+      url
+    ]);
     res.json({ success: true, message: 'Link added successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
 
 // View student visits for a subject's links
 app.get('/host/subject/:subjectId/visits', verifyToken, ensureRole('host'), async (req, res) => {
