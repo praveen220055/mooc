@@ -154,7 +154,10 @@ app.get('/host/subject/:subjectId/visits', verifyToken, ensureRole('host'), asyn
 app.get('/student/dashboard', verifyToken, ensureRole('student'), async (req, res) => {
   try {
     // We assume your 'subjects' table has columns: id, host_id, name
-    const subjectsResult = await query('SELECT id, name FROM subjects', []);
+    const subjectsResult = await query(`
+  SELECT id, subject_name AS "name"
+  FROM subjects
+`, []);
     const subjects = subjectsResult.rows;
 
     for (let subject of subjects) {
