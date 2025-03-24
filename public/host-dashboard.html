@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Host Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="dashboard">
+    <h2>Host Dashboard</h2>
+    
+    <!-- Section for Host Info, Subject & Link Management -->
+    <div class="dashboard-section">
+      <!-- Host Information Card -->
+      <div class="card" id="hostInfo">
+        <h3>Host Information</h3>
+        <label for="hostName">Host Name:</label>
+        <input type="text" id="hostName" name="hostName" placeholder="Enter host name">
+        <label for="hostSubject">Host Subject:</label>
+        <input type="text" id="hostSubject" name="hostSubject" placeholder="Enter host subject">
+        <button id="saveHostInfo">Save Info</button>
+      </div>
+      
+      <!-- Add Subject Card -->
+      <div class="card" id="subjectSection">
+        <h3>Add Subject</h3>
+        <input type="text" id="subjectName" placeholder="Subject Name">
+        <button id="addSubject">Add Subject</button>
+      </div>
+      
+      <!-- Add Link Card -->
+      <div class="card" id="linkSection">
+        <h3>Add Links to Subject</h3>
+        <select id="subjectDropdown"></select>
+        <input type="text" id="linkTitle" placeholder="Link Title">
+        <input type="url" id="linkURL" placeholder="MEGA Folder URL">
+        <button id="addLink">Add Link</button>
+      </div>
+    </div>
+    
+    <!-- Separate full-width section for Student Visits -->
+    <div class="dashboard-full">
+      <div class="card" id="visitsSection">
+        <h3>Student Visits</h3>
+        <select id="subjectForVisits"></select>
+        <button id="viewVisits">View Visits</button>
+        <div id="visitResults"></div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <script>
+    // Save Host Info
+    document.getElementById('saveHostInfo').addEventListener('click', function() {
+      const hostName = document.getElementById('hostName').value;
+      const hostSubject = document.getElementById('hostSubject').value;
+      alert('Host info saved: ' + hostName + ', ' + hostSubject);
+    });
+    
+    // Add Subject
+    document.getElementById('addSubject').addEventListener('click', function() {
+      const subjectName = document.getElementById('subjectName').value;
+      const token = localStorage.getItem('token');
+      fetch('/host/subject', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ subjectName })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Subject added successfully');
+          updateSubjectDropdowns();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(err => console.error('Error adding subject:', err));
+    });
+    
+    // Add Link
+    document.getElementById('addLink').addEventListener('click', function() {
+      const subjectId = document.getElementById('subjectDropdown').value;
+      const linkTitle = document.getElementById('linkTitle').value;
+      const linkURL = document.getElementById('linkURL').value;
+      const token = localStorage.getItem('token');
+      
+      fetch('/host/subject/' + subjectId + '/link', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ title: linkTitle, url: linkURL })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Link added successfully');
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error adding link:', error);
+        alert('Error adding link. Check console for details.');
+      });
+    });
+    
+    // View Visits
+    document.getElementById('viewVisits').addEventListener('click', function() {
+      const subjectId = document.getElementById('subjectForVisits').value;
+      const token = localStorage.getItem('token');
+      
+      fetch('/host/subject/' + subjectId + '/visits', {
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        let html = '';
+        if (data.visits && data.visits.length > 0) {
+          data.visits.forEach(visit => {
+            html += '<p>' + visit.studentUsername + ' visited at ' + visit.visit_time + '</p>';
+          });
+        } else {
+          html = '<p>No visits recorded</p>';
+        }
+        document.getElementById('visitResults').innerHTML = html;
+      })
+      .catch(err => console.error('Error fetching visits:', err));
+    });
+    
+    // Update Subject Dropdowns
+    function updateSubjectDropdowns() {
+      const token = localStorage.getItem('token');
+      fetch('/host/dashboard', {
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        const subjectDropdown = document.getElementById('subjectDropdown');
+        const subjectForVisits = document.getElementById('subjectForVisits');
+        subjectDropdown.innerHTML = '';
+        subjectForVisits.innerHTML = '';
+        if (data.subjects) {
+          data.subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject.id;
+            option.textContent = subject.name;
+            subjectDropdown.appendChild(option);
+            
+            const option2 = option.cloneNode(true);
+            subjectForVisits.appendChild(option2);
+          });
+        }
+      })
+      .catch(err => console.error('Error fetching dashboard data:', err));
+    }
+    
+    // Load subjects on page load
+    updateSubjectDropdowns();
+  </script>
+</body>
+</html>

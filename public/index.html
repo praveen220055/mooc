@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Login Page</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-container">
+    <h2>Login</h2>
+    <button id="student-login-btn">Student Login</button>
+    <button id="host-login-btn">Host Login</button>
+    <p>Don't have an account? <a href="register.html">Register Here</a></p>
+  </div>
+  
+  <script>
+    document.getElementById('student-login-btn').addEventListener('click', function() {
+      window.location.href = 'student-login.html';
+    });
+    document.getElementById('host-login-btn').addEventListener('click', function() {
+      window.location.href = 'host-login.html';
+    });
+  </script>
+</body>
+</html>

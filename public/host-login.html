@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Host Login</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="form-container">
+    <h2>Host Login</h2>
+    <form id="hostLoginForm">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" required>
+      
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required>
+      
+      <label for="secret">Secret Code:</label>
+      <input type="text" id="secret" name="secret" required>
+      
+      <button type="submit">Login</button>
+    </form>
+  </div>
+  
+  <script>
+    document.getElementById('hostLoginForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const secret = document.getElementById('secret').value;
+      
+      fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role: 'host', secret })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if(data.success){
+          localStorage.setItem('token', data.token);
+          window.location.href = 'host-dashboard.html';
+        } else {
+          alert('Login failed: ' + data.message);
+        }
+      })
+      .catch(err => console.error(err));
+    });
+  </script>
+</body>
+</html>

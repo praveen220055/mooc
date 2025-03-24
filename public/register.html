@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Register</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="form-container">
+    <h2>Register</h2>
+    <form id="registerForm">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" required>
+      
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required>
+      
+      <label for="role">Register As:</label>
+      <select id="role" name="role">
+        <option value="student">Student</option>
+        <option value="host">Host</option>
+      </select>
+      
+      <button type="submit">Register</button>
+    </form>
+  </div>
+  
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('role').value;
+      
+      fetch('/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password, role })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Registration successful! Please login.');
+          window.location.href = 'index.html';
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(err => console.error(err));
+    });
+  </script>
+</body>
+</html>

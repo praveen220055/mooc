@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Student Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="dashboard">
+    <h2>Student Dashboard</h2>
+    <div class="dashboard-grid" id="subjectsSection">
+      <div id="subjectsList"></div>
+    </div>
+  </div>
+  
+  <script>
+    function loadSubjects() {
+      const token = localStorage.getItem('token');
+      fetch('/student/dashboard', {
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        const subjectsList = document.getElementById('subjectsList');
+        subjectsList.innerHTML = '';
+        if (data.subjects && data.subjects.length > 0) {
+          data.subjects.forEach(subject => {
+            let subjectDiv = document.createElement('div');
+            subjectDiv.className = 'card';
+            subjectDiv.innerHTML = '<h4>' + subject.name + '</h4>';
+            if (subject.links && subject.links.length > 0) {
+              subject.links.forEach(link => {
+                let linkEl = document.createElement('p');
+                linkEl.innerHTML = '<a href="#" data-linkid="' + link.id + '">' + link.title + '</a>';
+                linkEl.querySelector('a').addEventListener('click', function(e) {
+                  e.preventDefault();
+                  const linkId = this.getAttribute('data-linkid');
+                  fetch('/student/link/' + linkId, {
+                    headers: {
+                      'Authorization': 'Bearer ' + token
+                    }
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    if (data.url) {
+                      window.location.href = data.url;
+                    } else {
+                      alert('No URL returned');
+                    }
+                  })
+                  .catch(err => console.error('Error fetching student link:', err));
+                });
+                subjectDiv.appendChild(linkEl);
+              });
+            } else {
+              subjectDiv.innerHTML += '<p>No links available</p>';
+            }
+            subjectsList.appendChild(subjectDiv);
+          });
+        } else {
+          subjectsList.innerHTML = '<p>No subjects available</p>';
+        }
+      })
+      .catch(err => {
+        console.error('Error loading subjects:', err);
+        document.getElementById('subjectsList').innerHTML = '<p>Error loading subjects</p>';
+      });
+    }
+    
+    // Load subjects on page load
+    loadSubjects();
+  </script>
+</body>
+</html>
