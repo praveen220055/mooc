@@ -12,17 +12,14 @@ const { verifyToken, ensureRole } = require('./authMiddleware');
 
 const app = express();
 
-// Update your pool configuration to use your Supabase connection string
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,  // Set this to your Supabase connection string
+  connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false  // Supabase requires SSL; this option is common for cloud databases
+    rejectUnauthorized: false
   }
 });
 
 app.use(bodyParser.json());
-
-// Serve all files in the public folder (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Helper function for database queries
@@ -82,7 +79,13 @@ app.post('/login', async (req, res) => {
 // Get host dashboard data (used to populate dropdowns)
 app.get('/host/dashboard', verifyToken, ensureRole('host'), async (req, res) => {
   try {
-    const subjects = await query('SELECT id, name FROM subjects WHERE host_id = $1', [req.user.id]);
+    // CHANGED HERE: selecting subject_name AS "name"
+    const subjects = await query(`
+      SELECT id, subject_name AS "name"
+      FROM subjects
+      WHERE host_id = $1
+    `, [req.user.id]);
+    
     res.json({ success: true, subjects: subjects.rows });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -93,7 +96,12 @@ app.get('/host/dashboard', verifyToken, ensureRole('host'), async (req, res) => 
 app.post('/host/subject', verifyToken, ensureRole('host'), async (req, res) => {
   const { subjectName } = req.body;
   try {
-    await query('INSERT INTO subjects (host_id, name) VALUES ($1, $2)', [req.user.id, subjectName]);
+    // CHANGED HERE: inserting into subject_name
+    await query(`
+      INSERT INTO subjects (host_id, subject_name)
+      VALUES ($1, $2)
+    `, [req.user.id, subjectName]);
+
     res.json({ success: true, message: 'Subject added successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -103,7 +111,7 @@ app.post('/host/subject', verifyToken, ensureRole('host'), async (req, res) => {
 // Add a link to a subject
 app.post('/host/subject/:subjectId/link', verifyToken, ensureRole('host'), async (req, res) => {
   let { subjectId } = req.params;
-  subjectId = parseInt(subjectId, 10); // Convert subjectId to integer
+  subjectId = parseInt(subjectId, 10);
   const { title, url } = req.body;
   try {
     await query('INSERT INTO links (subject_id, title, url) VALUES ($1, $2, $3)', [subjectId, title, url]);
@@ -136,9 +144,13 @@ app.get('/host/subject/:subjectId/visits', verifyToken, ensureRole('host'), asyn
 // Get all subjects and their links for student dashboard
 app.get('/student/dashboard', verifyToken, ensureRole('student'), async (req, res) => {
   try {
-    const subjectsResult = await query('SELECT id, name FROM subjects', []);
+    // CHANGED HERE: selecting subject_name AS "name"
+    const subjectsResult = await query(`
+      SELECT id, subject_name AS "name"
+      FROM subjects
+    `, []);
+    
     const subjects = subjectsResult.rows;
-
     for (let subject of subjects) {
       const linksResult = await query('SELECT id, title, url FROM links WHERE subject_id = $1', [subject.id]);
       subject.links = linksResult.rows;
